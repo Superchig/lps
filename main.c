@@ -640,7 +640,18 @@ int main()
                     }
                     break;
                 case TB_KEY_CTRL_U:
-                    selection_index -= tb_height() / 2;
+                    base_index -= tb_height() / 2;
+
+                    if (base_index < 0)
+                    {
+                        base_index = 0;
+
+                        selection_index -= tb_height() / 2;
+                        if (selection_index < 0)
+                        {
+                            selection_index = 0;
+                        }
+                    }
 
                     if (selection_index < 0)
                     {
@@ -648,12 +659,13 @@ int main()
                     }
                     break;
                 case TB_KEY_CTRL_D:
-                    selection_index += tb_height() / 2;
+                    base_index += tb_height() / 2;
 
-                    const int bottom_line = tb_height() - 1;
-                    if (selection_index >= bottom_line)
+                    if (base_index >= upgrade_list->size - bottom_line)
                     {
-                        selection_index = bottom_line;
+                        base_index = upgrade_list->size - bottom_line - 1;
+
+                        selection_index += tb_height() / 2;
                     }
                     break;
                 }
