@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <unistd.h>
+#include <errno.h>
 
-#define _GNU_SOURCE
-#include <sys/mman.h>
-#undef _GNU_SOURCE
+#include <sys/stat.h>
 
 #include <alpm.h>
 #include <termbox.h>
@@ -421,8 +421,44 @@ int main()
 
     const char *home_path = getenv("HOME");
     char config_path[200];
+    char config_dir_path[200];
     snprintf(config_path, 200, "%s/.config/lps/keep_packages", home_path);
+    snprintf(config_dir_path, 200, "%s/.config/lps", home_path);
+
+    struct stat s;
+    int stat_err = stat(config_dir_path, &s);
+    if (stat_err == -1)
+    {
+        if (errno == ENOENT)
+        {
+            if (mkdir(config_dir_path, 0755) == -1)
+            {
+                perror("Failed to create config directory");
+                err_return = 30;
+                goto exit;
+            }
+        }
+        else
+        {
+            perror("stat");
+            err_return = 31;
+            goto exit;
+        }
+    }
+    else if (!S_ISDIR(s.st_mode))
+    {
+        fprintf(stderr, "Config dir is not a directory");
+        err_return = 32;
+        goto exit;
+    }
+
     keep_file = fopen(config_path, "a+");
+    if (keep_file == NULL)
+    {
+        perror("Failed to open config file");
+        err_return = 35;
+        goto exit;
+    }
 
     keep_package_names = pkg_name_list_new(5);
     while (true)
@@ -444,6 +480,13 @@ int main()
         }
 
         // printf("%s\n", new_name->name);
+    }
+
+    // Add default keep packages if none were read in from file
+    if (keep_package_names->size <= 0)
+    {
+        snprintf(pkg_name_new(keep_package_names)->name, MAX_PACKAGE_NAME_SIZE, "pacman");
+        snprintf(pkg_name_new(keep_package_names)->name, MAX_PACKAGE_NAME_SIZE, "glibc");
     }
 
     dependencies_set = name_set_new();
@@ -715,6 +758,13 @@ exit_tb:
 exit:
     if (keep_file != NULL)
     {
+        rewind(keep_file);
+
+        for (int i = 0; i < keep_package_names->size; i++)
+        {
+            fprintf(keep_file, "%s\n", keep_package_names->names[i].name);
+        }
+
         fclose(keep_file);
     }
 
