@@ -672,7 +672,7 @@ int main()
                 {
                 case TB_KEY_SPACE:
                 case TB_KEY_ENTER:
-                    if (true) // This is just here to get QTCreator's formatting to work correctly
+                    if (true) // This is just here to get Qt Creator's formatting to work correctly
                     {
                         curr_pkg->is_selected = !curr_pkg->is_selected;
 
