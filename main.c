@@ -756,26 +756,47 @@ int main()
                     }
                     break;
                 case 'w':
-                    for (int i = 0; i < upgrade_list->size; i++)
+                    if (true)
                     {
-                        pkg_state_t *curr_pkg_state = &upgrade_list->ary[i];
-                        if (curr_pkg_state->is_selected)
+                        // TODO(Chris): Improve the selection cursor changing so that it either
+                        // remains on the current package (if unselected) or moves to the closest
+                        // unselected package
+                        for (int i = 0; i < upgrade_list->size; i++)
                         {
-                            curr_pkg_state->is_selected = false;
-                            pkg_state_list_delete_at(upgrade_list, i);
-                            i--;
+                            pkg_state_t *curr_pkg_state = &upgrade_list->ary[i];
+                            int changing_pkg_index = pkg_index;
+                            if (curr_pkg_state->is_selected)
+                            {
+                                curr_pkg_state->is_selected = false;
+                                pkg_state_list_delete_at(upgrade_list, i);
+
+                                if (i <= changing_pkg_index)
+                                {
+                                    selection_index--;
+                                    changing_pkg_index--;
+                                }
+
+                                i--;
+                            }
                         }
 
-                        // Occurs if user "keeps" packages at the end of list
+                        // Occurs if the user removes the first package while having their cursor on it
+                        if (selection_index < 0)
+                        {
+                            selection_index = 0;
+                        }
+
+                        // Occurs if the user removes all the shown packages at once
+                        if (base_index >= upgrade_list->size)
+                        {
+                            base_index = upgrade_list->size - view_height;
+                            selection_index = bottom_line;
+                        }
+
+                        // Occurs if the user "keeps" packages at the end of list
                         if (selection_index >= upgrade_list->size - base_index)
                         {
                             selection_index = upgrade_list->size - base_index - 1;
-                        }
-
-                        // TODO(Chris): Fix this to properly reposition index
-                        if (base_index >= upgrade_list->size)
-                        {
-                            base_index = upgrade_list->size - view_height - 1;
                         }
                     }
                     break;
