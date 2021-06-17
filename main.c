@@ -39,6 +39,12 @@ void pkg_state_list_add_pkg(pkg_state_list_t *list, alpm_pkg_t *underlying_pkg)
     list->size++;
 }
 
+void pkg_state_list_delete_at(pkg_state_list_t *list, int index)
+{
+    memmove(&list->ary[index], &list->ary[index + 1], sizeof(pkg_state_t) * (list->size - index));
+    list->size--;
+}
+
 pkg_state_list_t *pkg_state_list_new(int capacity)
 {
     pkg_state_list_t *list = malloc(sizeof(pkg_state_list_t));
@@ -122,7 +128,6 @@ pkg_name_list_t *pkg_name_list_new(int capacity)
     return list;
 }
 
-// TODO(Chris): Finish implementing/modify as necessary
 pkg_name_t *pkg_name_new(pkg_name_list_t *list)
 {
     if (list->size >= list->capacity)
@@ -452,6 +457,8 @@ int main()
         goto exit;
     }
 
+    // TODO(Chris): Avoid using "a+" to create the file, even if it does
+    // NOTE(Chris): Use "a+" as an easy way to create the file, even if it doesn't exist
     keep_file = fopen(config_path, "a+");
     if (keep_file == NULL)
     {
@@ -600,7 +607,7 @@ int main()
         const int pkg_index = base_index + selection_index;
         pkg_state_t *curr_pkg = &upgrade_list->ary[pkg_index];
         const int half_width = tb_width() / 2;
-        int view_height = min(tb_height(), upgrade_list->size);
+        int view_height = min(tb_height(), upgrade_list->size - base_index);
         for (int i = 0; i < view_height; i++)
         {
             const char *pkg_name = alpm_pkg_get_name(upgrade_list->ary[base_index + i].underlying_pkg);
@@ -672,13 +679,16 @@ int main()
                         // NOTE(Chris): This currently just copy-pastes the functionality of the 'j' key.
                         // We might want to make this a little more DRY in the future, but that might
                         // require making the whole input handling system more robust.
-                        if (selection_index == view_height - 1)
+                        if (base_index + selection_index < upgrade_list->size - 1)
                         {
-                            base_index++;
-                        }
-                        else if (selection_index < view_height)
-                        {
-                            selection_index++;
+                            if (selection_index == view_height - 1)
+                            {
+                                base_index++;
+                            }
+                            else if (selection_index < view_height)
+                            {
+                                selection_index++;
+                            }
                         }
                     }
                     break;
@@ -745,6 +755,39 @@ int main()
                         }
                     }
                     break;
+                case 'w':
+                    for (int i = 0; i < upgrade_list->size; i++)
+                    {
+                        pkg_state_t *curr_pkg_state = &upgrade_list->ary[i];
+                        if (curr_pkg_state->is_selected)
+                        {
+                            curr_pkg_state->is_selected = false;
+                            pkg_state_list_delete_at(upgrade_list, i);
+                            i--;
+                        }
+
+                        // Occurs if user "keeps" packages at the end of list
+                        if (selection_index >= upgrade_list->size - base_index)
+                        {
+                            selection_index = upgrade_list->size - base_index - 1;
+                        }
+
+                        // TODO(Chris): Fix this to properly reposition index
+                        if (base_index >= upgrade_list->size)
+                        {
+                            base_index = upgrade_list->size - view_height - 1;
+                        }
+                    }
+                    break;
+                case 'G':
+                    if (true) // NOTE(Chris): This is just here for Qt Creator's bracket formatting
+                    {
+                        const int max_base_index = upgrade_list->size - bottom_line - 1;
+                        base_index = max_base_index;
+
+                        selection_index = bottom_line;
+                    }
+                    break;
                 }
             }
         }
@@ -758,7 +801,9 @@ exit_tb:
 exit:
     if (keep_file != NULL)
     {
-        rewind(keep_file);
+        fclose(keep_file);
+
+        keep_file = fopen(config_path, "w");
 
         for (int i = 0; i < keep_package_names->size; i++)
         {
@@ -789,7 +834,10 @@ exit:
         pkg_state_list_free(upgrade_list);
     }
 
-    alpm_release(handle);
+    if (handle != NULL)
+    {
+        alpm_release(handle);
+    }
 
     return err_return;
 }
