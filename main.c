@@ -802,8 +802,9 @@ int main()
                             int changing_pkg_index = pkg_index;
                             if (curr_pkg_state->is_selected)
                             {
-                                curr_pkg_state->is_selected = false;
-                                pkg_state_list_delete_at(upgrade_list, i);
+                                pkg_name_t *new_keep_package = pkg_name_new(keep_package_names);
+                                snprintf(new_keep_package->name, MAX_PACKAGE_NAME_SIZE, "%s", alpm_pkg_get_name(curr_pkg_state->underlying_pkg));
+                                                                new_keep_package->size = strlen(new_keep_package->name);
 
                                 if (i <= changing_pkg_index)
                                 {
@@ -811,6 +812,8 @@ int main()
                                     changing_pkg_index--;
                                 }
 
+                                curr_pkg_state->is_selected = false;
+                                pkg_state_list_delete_at(upgrade_list, i);
                                 i--;
                             }
                         }
