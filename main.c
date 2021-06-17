@@ -105,6 +105,24 @@ int min(int a, int b)
     return a < b ? a : b;
 }
 
+// File size formatter based off of
+// https://stackoverflow.com/questions/3898840/converting-a-number-of-bytes-into-a-file-size-in-c
+void read_size(char *buf, size_t capacity, size_t size)
+{
+    static const char *SIZES[] = { "B", "kiB", "MiB", "GiB" };
+    size_t div = 0;
+    size_t rem = 0;
+
+    while (size >= 1024 && div < (sizeof SIZES / sizeof *SIZES)) {
+        rem = (size % 1024);
+        div++;
+        size /= 1024;
+    }
+
+    snprintf(buf, capacity, "%.1f %s", (float)size + (float)rem / 1024.0, SIZES[div]);
+}
+
+
 // FIXME(Chris): Remove if unnecessary
 typedef struct _pkg_name
 {
@@ -652,6 +670,23 @@ int main()
 
             curs_x += chars_read;
         }
+
+        if (curs_y < 3)
+        {
+            curs_y = 3;
+        }
+        else
+        {
+            curs_y++;
+        }
+
+        curs_x = tb_width() / 2;
+        write_str(curs_x, curs_y, "Installed Size: ", TB_BOLD, TB_DEFAULT);
+        curs_x += strlen("Installed Size: ");
+        char size_str[50];
+        // snprintf(size_str, 50, "%lu", alpm_pkg_get_isize(curr_pkg->underlying_pkg));
+        read_size(size_str, 50, alpm_pkg_get_isize(curr_pkg->underlying_pkg));
+        write_str(curs_x, curs_y, size_str, TB_DEFAULT, TB_DEFAULT);
 
         tb_present();
 
